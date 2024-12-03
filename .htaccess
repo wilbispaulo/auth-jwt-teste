@@ -1,0 +1,42 @@
+RewriteEngine On
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+#Header add Access-Control-Allow-Origin: "*"
+#Header add Access-Control-Allow-Methods: "*"
+#Header add Access-Control-Allow-Headers: "*"
+
+
+# Turn rewriting on
+Options +FollowSymLinks
+RewriteEngine On
+
+# # Redirect request to /catequese/carteira
+# RewriteCond %{REQUEST_URI} /catequese/carteira$ [NC]
+# RewriteRule .* /carteira/index.php [END]
+
+# # Redirect request to /catequese
+# RewriteCond %{REQUEST_URI} ^/catequese/carteira/(.*)$ [NC]
+# RewriteRule .* /carteira/%1 [END]
+
+
+
+# # Redirect request to /catequese
+# RewriteCond %{REQUEST_URI} ^/catequese/(.*)$ [NC]
+# RewriteRule .* /carteira/%1 [END]
+
+
+
+# Redirect requests to index.php
+RewriteCond %{REQUEST_URI} !=/index.php
+RewriteCond %{REQUEST_URI} !.*\.png$ [NC]
+RewriteCond %{REQUEST_URI} !.*\.jpg$ [NC]
+RewriteCond %{REQUEST_URI} !.*\.svg$ [NC]
+RewriteCond %{REQUEST_URI} !.*\.woff$ [NC]
+RewriteCond %{REQUEST_URI} !.*\.woff2$ [NC]
+RewriteCond %{REQUEST_URI} !.*\.css$ [NC]
+RewriteCond %{REQUEST_URI} !.*\.gif$ [NC]
+RewriteCond %{REQUEST_URI} !.*\.js$ [NC]
+RewriteCond %{REQUEST_URI} !.*\.json$ [NC]
+RewriteCond %{REQUEST_URI} !.*\.map$ [NC]
+RewriteRule .* /index.php
