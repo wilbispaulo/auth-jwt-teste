@@ -1,7 +1,7 @@
 <?php
 
 use Dotenv\Dotenv;
-use Core\library\Router;
+use core\library\Router;
 
 require './vendor/autoload.php';
 

@@ -10,11 +10,19 @@ class Request
     public function __construct(
         private array $files
     ) {
-        if (strstr($_SERVER['CONTENT_TYPE'], 'multipart/form-data')) {
-            $this->postData = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
-        } else if (strstr($_SERVER['CONTENT_TYPE'], 'application/json')) {
-            $data = file_get_contents('php://input');
-            $this->postData = json_decode($data, true);
+        if (isset($_SERVER['CONTENT_TYPE'])) {
+            if (strstr($_SERVER['CONTENT_TYPE'], 'multipart/form-data')) {
+                $this->postData = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+            } else if (strstr($_SERVER['CONTENT_TYPE'], 'application/json')) {
+                $data = file_get_contents('php://input');
+                $this->postData = json_decode($data, true);
+            }
+        }
+        if (isset($_SERVER['PHP_AUTH_USER'])) {
+            $this->postData['PHP_AUTH_USER'] = $_SERVER['PHP_AUTH_USER'];
+        }
+        if (isset($_SERVER['PHP_AUTH_PW'])) {
+            $this->postData['PHP_AUTH_PW'] = $_SERVER['PHP_AUTH_PW'];
         }
 
         if (count($_FILES) > 0) {

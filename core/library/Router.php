@@ -5,8 +5,8 @@ namespace core\library;
 use Exception;
 use FastRoute\Dispatcher;
 use FastRoute\RouteCollector;
-use App\controllers\NotFoundController;
-use App\controllers\MethodNotAllowedController;
+use app\controllers\NotFoundController;
+use app\controllers\MethodNotAllowedController;
 use function FastRoute\simpleDispatcher;
 
 class Router

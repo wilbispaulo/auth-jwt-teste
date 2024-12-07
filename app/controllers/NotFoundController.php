@@ -1,6 +1,6 @@
 <?php
 
-namespace App\controllers;
+namespace app\controllers;
 
 use core\library\Response;
 
