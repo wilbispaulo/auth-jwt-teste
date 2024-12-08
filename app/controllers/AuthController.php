@@ -2,9 +2,9 @@
 
 namespace app\controllers;
 
-use app\models\Grant;
 use app\models\User;
 use core\library\Auth;
+use core\library\OAuth;
 use core\library\Request;
 use core\library\Response;
 
@@ -15,6 +15,7 @@ class AuthController
         $request = Request::create();
         $data = $request->getAll();
 
+        $oAuth = new OAuth(null, $_ENV['PRIVATE_PEM']);
         $authUser = new Auth(new User);
         if (isset($data['PHP_AUTH_USER']) && isset($data['PHP_AUTH_PW'])) {
             $authUser->setCredentials($data['PHP_AUTH_USER'], $data['PHP_AUTH_PW'], 'email');
@@ -28,7 +29,7 @@ class AuthController
                     'username' => 'NOT_FOUND'
                 ];
             } else {
-                $credentials = $authUser->genCredentials();
+                $credentials = $oAuth->genCredentials();
                 if (!$credentials) {
                     $data = [
                         'username' => $data['PHP_AUTH_USER'],
