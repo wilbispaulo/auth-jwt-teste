@@ -47,7 +47,7 @@ class Auth
         $this->fieldid = $fieldid;
     }
 
-    public function Auth(): int | false
+    public function Auth(): array
     {
         if (!isset($this->userid) or !isset($this->secret) or !isset($this->fieldid)) {
             return false;
@@ -60,7 +60,20 @@ class Auth
         if ($this->auth > 0 and $userFound->password != null) {
             password_verify($this->secret, $userFound->password) ? $this->auth += 2 : null;
         }
-        return $this->auth;
+        if ($this->auth < 3) {
+            $result = [
+                'password' => 'FAIL'
+            ];
+        } else if ($this->auth < 1) {
+            $result = [
+                'username' => 'NOT_FOUND'
+            ];
+        } else {
+            $result = [
+                'auth' => 'OK'
+            ];
+        }
+        return $result;
     }
 
     public function Autho(string $idModule): string | false

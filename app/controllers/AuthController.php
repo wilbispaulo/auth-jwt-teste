@@ -32,35 +32,17 @@ class AuthController
             );
         }
         $authVerify = $authUser->Auth();
-        if ($authVerify < 3) {
-            $result = [
-                'password' => 'FAIL'
-            ];
-        } else if ($authVerify < 1) {
-            $result = [
-                'username' => 'NOT_FOUND'
-            ];
-        } else {
+        if (in_array('OK', $authVerify)) {
             $credentials = $oAuth->genCredentials($authUser->getUserid());
-            if (!$credentials) {
-                $result = [
-                    'username' => $authUser->getUserid(),
-                    'auth' => 'FAIL_IN_DB',
-                ];
-            } else {
-                $result = [
-                    'username' => $authUser->getUserid(),
-                    'auth' => 'OK',
-                ];
-                $result = array_merge($result, $credentials);
-            }
+            return $credentials;
+        } else {
+            return new Response(
+                $authVerify,
+                200,
+                [
+                    'Content-Type' => 'application/json'
+                ]
+            );
         }
-        return new Response(
-            $result,
-            200,
-            [
-                'Content-Type' => 'application/json'
-            ]
-        );
     }
 }

@@ -58,7 +58,7 @@ class OAuth
         $this->claims = $claims;
     }
 
-    public function genCredentials(string $userid)
+    public function genCredentials(string $userid): Response
     {
         $timeCred = (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->getTimestamp();
         $credential['CLIENT_ID'] = self::uuidv4();
@@ -75,7 +75,44 @@ class OAuth
             $arrayAssoc['username'] = $userid;
             $ok = $credentials->create($arrayAssoc);
         };
-        return ($ok === true) ? $credential : false;
+
+        if (!$ok) {
+            $result = [
+                'username' => $userid,
+                'auth' => 'FAIL_IN_DB',
+            ];
+        } else {
+            $result = [
+                'auth' => 'OK',
+                'username' => $userid,
+                'CLIENT_ID' => $credential['CLIENT_ID'],
+                'CLIENT_SECRET' => $credential['CLIENT_SECRET'],
+            ];
+        }
+        return new Response(
+            $result,
+            200,
+            [
+                'Content-Type' => 'application/json'
+            ]
+        );
+    }
+
+    public function tokenJWT(): Response
+    {
+        if (!$this->verifyCredentials()) {
+            $result['validation'] = 'INVALID';
+        } else {
+            $result['validation'] = 'OK';
+            $result['token'] = $this->genToken();
+        }
+        return new Response(
+            $result,
+            200,
+            [
+                'Content-Type' => 'application/json'
+            ]
+        );
     }
 
     public function verifyCredentials(): bool
@@ -95,7 +132,7 @@ class OAuth
         }
     }
 
-    public function tokenJWS()
+    public function genToken()
     {
         $algoManager = new AlgorithmManager([
             new RS256(),
@@ -162,6 +199,25 @@ class OAuth
         } catch (Exception $e) {
             return ['token' => 'INVALID'];
         }
+    }
+
+    public function checkOAuth(): array
+    {
+        if ($token = self::getBearerToken()) {
+            $result = $this->loadJWS($token);
+            if (!in_array('INVALID', $result) && !in_array('EXPIRED', $result)) {
+                $body = [
+                    'response' => 'OK'
+                ];
+            } else {
+                $body = $result;
+            }
+        } else {
+            $body = [
+                'response' => 'TOKEN_NOT_FOUND'
+            ];
+        };
+        return $body;
     }
 
     private function checkClaims(JWS $jws)

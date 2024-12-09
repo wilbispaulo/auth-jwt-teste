@@ -21,27 +21,16 @@ class TokenController
         } else if (isset($data['CLIENT_ID']) && isset($data['CLIENT_SECRET'])) {
             $oAuth->setCredentials($data['CLIENT_ID'], $data['CLIENT_SECRET']);
         } else {
-            $result['validation'] = 'CREDENTIALS_NOT_SET';
             return new Response(
-                $result,
+                [
+                    'validation' => 'CREDENTIALS_NOT_SET'
+                ],
                 200,
                 [
                     'Content-Type' => 'application/json'
                 ]
             );
         }
-        if ($oAuth->verifyCredentials()) {
-            $result['validation'] = 'OK';
-            $result['token'] = $oAuth->tokenJWS();
-        } else {
-            $result['validation'] = 'INVALID';
-        }
-        return new Response(
-            $result,
-            200,
-            [
-                'Content-Type' => 'application/json'
-            ]
-        );
+        return $oAuth->tokenJWT();
     }
 }
