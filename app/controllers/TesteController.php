@@ -3,7 +3,6 @@
 namespace app\controllers;
 
 use core\library\OAuth;
-use core\library\Request;
 use core\library\Response;
 
 class TesteController

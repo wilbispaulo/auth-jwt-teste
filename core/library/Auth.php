@@ -2,31 +2,9 @@
 
 namespace core\library;
 
-use DateTime;
-use Exception;
-use DateTimeZone;
 use app\models\User;
 use app\models\Grant;
 use core\library\Filters;
-use app\models\Credential;
-use Jose\Component\Checker;
-use Jose\Component\Core\JWK;
-use core\library\StandardClock;
-use Jose\Component\Signature\JWS;
-use Jose\Component\Signature\JWSBuilder;
-use Jose\Component\Checker\IssuerChecker;
-use Jose\Component\Core\AlgorithmManager;
-use Jose\Component\Signature\JWSVerifier;
-use Jose\Component\Checker\IssuedAtChecker;
-use Jose\Component\Checker\NotBeforeChecker;
-use Jose\Component\KeyManagement\JWKFactory;
-use Jose\Component\Signature\Algorithm\RS256;
-use Jose\Component\Signature\JWSTokenSupport;
-use Jose\Component\Checker\ClaimCheckerManager;
-use Jose\Component\Checker\ExpirationTimeChecker;
-use Jose\Component\Checker\HeaderCheckerManager;
-use Jose\Component\Signature\Serializer\CompactSerializer;
-use Jose\Component\Signature\Serializer\JWSSerializerManager;
 
 class Auth
 {
