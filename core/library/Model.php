@@ -3,7 +3,9 @@
 namespace core\library;
 
 use PDO;
+use Exception;
 use PDOException;
+use PDOStatement;
 use core\library\Filters;
 use core\library\Connection;
 use core\library\Pagination;
@@ -13,6 +15,7 @@ abstract class Model
     private mixed $fields = '*';
     private ?Filters $filters = null;
     private string $pagination = '';
+    private array $dbArgs = [];
     protected string $table;
 
     public function getTable()
@@ -30,6 +33,11 @@ abstract class Model
         $this->filters = $filters;
     }
 
+    public function setDBAttributes(array $dbArgs)
+    {
+        $this->dbArgs = $dbArgs;
+    }
+
     public function setPagination(Pagination $pagination)
     {
         $pagination->setTotalItens($this->count());
@@ -41,14 +49,16 @@ abstract class Model
         try {
             $fields = array_keys($valuesAssoc);
             $sql = "insert into {$this->table} (" . implode(', ', $fields) . ") values (:" . implode(', :', $fields) . ")";
-            $prepare = self::connect($sql);
+            if (!$prepare = self::connect($sql, $this->dbArgs)) {
+                return false;
+            };
             return $prepare->execute($valuesAssoc);
         } catch (PDOException $e) {
-            var_dump($e->getMessage());
+            return false;
         }
     }
 
-    public function fetchAllObj(): array
+    public function fetchAllObj(): array | false
     {
         try {
             if (is_array($this->fields)) {
@@ -58,15 +68,17 @@ abstract class Model
             }
             $sql = "select {$fields} from {$this->table}{$this->filters?->dump()}{$this->pagination}";
 
-            $prepare = self::connect($sql);
+            if (!$prepare = self::connect($sql, $this->dbArgs)) {
+                return false;
+            };
             $prepare->execute(empty($this->filters) ? [] : $this->filters->getBind());
             return $prepare->fetchAll(PDO::FETCH_CLASS, get_called_class());
         } catch (PDOException $e) {
-            var_dump($e->getMessage());
+            return false;
         }
     }
 
-    public function fetchAll(): array
+    public function fetchAll(): array | false
     {
         try {
             if (is_array($this->fields)) {
@@ -76,15 +88,17 @@ abstract class Model
             }
             $sql = "select {$fields} from {$this->table}{$this->filters?->dump()}{$this->pagination}";
 
-            $prepare = self::connect($sql);
+            if (!$prepare = self::connect($sql, $this->dbArgs)) {
+                return false;
+            };
             $prepare->execute(empty($this->filters) ? [] : $this->filters->getBind());
             return $prepare->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            var_dump($e->getMessage());
+            return false;
         }
     }
 
-    public function findBy(string $field = '', mixed $value = ''): array
+    public function findBy(string $field = '', mixed $value = ''): array | false
     {
         try {
             if (is_array($this->fields)) {
@@ -96,11 +110,14 @@ abstract class Model
             $sql = (empty($this->filters)) ?
                 "select {$fields} from {$this->table} where {$field} = :{$field}" :
                 "select {$fields} from {$this->table} {$this->filters?->dump()}";
-            $prepare = self::connect($sql);
+            if (!$prepare = self::connect($sql, $this->dbArgs)) {
+                return false;
+            };
+
             $prepare->execute(empty($this->filters) ? [$field => $value] : $this->filters->getBind());
             return $prepare->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            return [];
+            return false;
         }
     }
 
@@ -111,11 +128,13 @@ abstract class Model
                 "select {$this->fields} from {$this->table} where {$field} = :{$field}" :
                 "select {$this->fields} from {$this->table} {$this->filters?->dump()}";
 
-            $prepare = self::connect($sql);
+            if (!$prepare = self::connect($sql, $this->dbArgs)) {
+                return false;
+            };
             $prepare->execute(empty($this->filters) ? [$field => $value] : $this->filters->getBind());
             return $prepare->fetchObject(get_called_class());
         } catch (PDOException $e) {
-            var_dump($e->getMessage());
+            return false;
         }
     }
 
@@ -136,10 +155,12 @@ abstract class Model
                 $sql .= "{$this->filters?->dump()}";
                 $valuesAssoc = array_merge($valuesAssoc, $this->filters->getBind());
             }
-            $prepare = self::connect($sql);
+            if (!$prepare = self::connect($sql, $this->dbArgs)) {
+                return false;
+            };
             return $prepare->execute($valuesAssoc);
         } catch (PDOException $e) {
-            var_dump($e->getMessage());
+            return false;
         }
     }
 
@@ -150,7 +171,9 @@ abstract class Model
             $sql = (empty($this->filters)) ?
                 "delete from {$this->table} where {$field} = :{$field}" :
                 "delete from {$this->table} {$this->filters?->dump()}";
-            $prepare = self::connect($sql);
+            if (!$prepare = self::connect($sql, $this->dbArgs)) {
+                return false;
+            };
             return $prepare->execute(empty($this->filters) ? [$field => $value] : $this->filters->getBind());
         } catch (PDOException $e) {
             return false;
@@ -161,29 +184,42 @@ abstract class Model
     {
         try {
             $sql = "select {$this->fields} from {$this->table} order by {$field} {$dir} limit 1";
-            $prepare = self::connect($sql);
+            if (!$prepare = self::connect($sql, $this->dbArgs)) {
+                return false;
+            };
             $prepare->execute();
             return $prepare->fetchObject(get_called_class());
         } catch (PDOException $e) {
-            var_dump($e->getMessage());
+            return false;
         }
     }
 
-    public function count(): mixed
+    public function count(): int | false
     {
         try {
             $sql = "select count({$this->fields}) from {$this->table}{$this->filters?->dump()}";
-            $prepare = self::connect($sql);
+            if (!$prepare = self::connect($sql, $this->dbArgs)) {
+                return false;
+            };
             $prepare->execute(empty($this->filters) ? [] : $this->filters->getBind());
             return $prepare->fetchColumn();
         } catch (PDOException $e) {
-            var_dump($e->getMessage());
+            return false;
         }
     }
 
-    public static function connect($sql)
+    public static function connect(string $sql, array $dbArgs): PDOStatement | false
     {
-        $connection = new Connection($_ENV['DB_HOST'], $_ENV['DB_PORT'], $_ENV['DB_NAME'], $_ENV['DB_USERNAME'], $_ENV['DB_PASSWORD']);
-        return $connection->connect()->prepare($sql);
+        try {
+            $keysPattern = ['host', 'port', 'dbname', 'username', 'password'];
+            $keysDB = array_keys($dbArgs);
+            if (count(array_diff_key($keysDB, $keysPattern)) > 0) {
+                return false;
+            }
+            $connection = new Connection($dbArgs['host'], $dbArgs['port'], $dbArgs['dbname'], $dbArgs['username'], $dbArgs['password']);
+            return $connection->connect()->prepare($sql);
+        } catch (PDOException $e) {
+            return false;
+        }
     }
 }

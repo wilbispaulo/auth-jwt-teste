@@ -16,9 +16,7 @@ use Jose\Component\Checker\IssuedAtChecker;
 use Jose\Component\Checker\NotBeforeChecker;
 use Jose\Component\KeyManagement\JWKFactory;
 use Jose\Component\Signature\Algorithm\RS256;
-use Jose\Component\Signature\JWSTokenSupport;
 use Jose\Component\Checker\ClaimCheckerManager;
-use Jose\Component\Checker\HeaderCheckerManager;
 use Jose\Component\Checker\ExpirationTimeChecker;
 use Jose\Component\Signature\Serializer\CompactSerializer;
 use Jose\Component\Signature\Serializer\JWSSerializerManager;
@@ -60,24 +58,24 @@ class OAuth
         $this->claims = $claims;
     }
 
-    public function genCredentials()
+    public function genCredentials(string $userid)
     {
         $timeCred = (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->getTimestamp();
         $credential['CLIENT_ID'] = self::uuidv4();
-        $credentialPlainText = $this->userid . '#' . $credential['CLIENT_ID'] . '#' . (string)$timeCred;
+        $credentialPlainText = $userid . '#' . $credential['CLIENT_ID'] . '#' . (string)$timeCred;
         $credential['CLIENT_SECRET'] = base64_encode(password_hash($credentialPlainText, PASSWORD_BCRYPT));
         $credentials = new Credential();
         $arrayAssoc = [
             'clientid' => $credential['CLIENT_ID'],
             'timestamp' => $timeCred,
         ];
-        if (count($credentials->findBy('username', $this->userid)) > 0) {
-            $ok = $credentials->update($arrayAssoc, 'username', $this->userid);
+        if (count($credentials->findBy('username', $userid)) > 0) {
+            $ok = $credentials->update($arrayAssoc, 'username', $userid);
         } else {
-            $arrayAssoc['username'] = $this->userid;
+            $arrayAssoc['username'] = $userid;
             $ok = $credentials->create($arrayAssoc);
         };
-        return $ok === true ? $credential : false;
+        return ($ok === true) ? $credential : false;
     }
 
     public function verifyCredentials(): bool
@@ -85,12 +83,16 @@ class OAuth
         $verify = false;
         $credential = base64_decode($this->secret);
         $credentials = new Credential();
-        $data = $credentials->findBy('clientid', $this->userid)[0];
-        if (count($data) > 0) {
+        if (count($data = $credentials->findBy('clientid', $this->userid)) > 0) {
+            $data = $data[0];
             $credentialPlainText = $data['username'] . '#' . $this->userid . '#' . (string)$data['timestamp'];
             $verify = password_verify($credentialPlainText, $credential);
+            return $verify;
+        } else {
+            return false;
         }
-        return $verify;
+        if (count($data) > 0) {
+        }
     }
 
     public function tokenJWS()

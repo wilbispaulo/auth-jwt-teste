@@ -15,41 +15,48 @@ class AuthController
         $request = Request::create();
         $data = $request->getAll();
 
-        $oAuth = new OAuth(null, $_ENV['PRIVATE_PEM']);
+        $oAuth = new OAuth();
         $authUser = new Auth(new User);
         if (isset($data['PHP_AUTH_USER']) && isset($data['PHP_AUTH_PW'])) {
             $authUser->setCredentials($data['PHP_AUTH_USER'], $data['PHP_AUTH_PW'], 'email');
-            $authVerify = $authUser->Auth();
-            if ($authVerify < 3) {
-                $data = [
-                    'password' => 'FAIL'
-                ];
-            } else if ($authVerify < 1) {
-                $data = [
-                    'username' => 'NOT_FOUND'
+        } else if (isset($data['username']) && isset($data['password'])) {
+            $authUser->setCredentials($data['username'], $data['password'], 'email');
+        } else {
+            $result['validation'] = 'USERNAME_PASSWORD_NOT_FOUND';
+            return new Response(
+                $result,
+                200,
+                [
+                    'Content-Type' => 'application/json'
+                ]
+            );
+        }
+        $authVerify = $authUser->Auth();
+        if ($authVerify < 3) {
+            $result = [
+                'password' => 'FAIL'
+            ];
+        } else if ($authVerify < 1) {
+            $result = [
+                'username' => 'NOT_FOUND'
+            ];
+        } else {
+            $credentials = $oAuth->genCredentials($authUser->getUserid());
+            if (!$credentials) {
+                $result = [
+                    'username' => $authUser->getUserid(),
+                    'auth' => 'FAIL_IN_DB',
                 ];
             } else {
-                $credentials = $oAuth->genCredentials();
-                if (!$credentials) {
-                    $data = [
-                        'username' => $data['PHP_AUTH_USER'],
-                        'auth' => 'FAIL_IN_DB',
-                    ];
-                } else {
-                    $data = [
-                        'username' => $data['PHP_AUTH_USER'],
-                        'auth' => 'OK',
-                    ];
-                    $data = array_merge($data, $credentials);
-                }
+                $result = [
+                    'username' => $authUser->getUserid(),
+                    'auth' => 'OK',
+                ];
+                $result = array_merge($result, $credentials);
             }
-        } else {
-            $data = [
-                'auth' => 'USERNAME_PASSWORD_NOT_FOUND'
-            ];
         }
         return new Response(
-            $data,
+            $result,
             200,
             [
                 'Content-Type' => 'application/json'

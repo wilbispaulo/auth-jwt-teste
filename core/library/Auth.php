@@ -88,6 +88,11 @@ class Auth
         return $userAutho[0]['crudval'] ?? false;
     }
 
+    public function getUserid()
+    {
+        return $this->userid;
+    }
+
     public function getLevel(): int
     {
         return $this->userObj->findBy('idusuario', User::getUserid())[0]['nivel'];
