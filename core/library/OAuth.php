@@ -359,7 +359,7 @@ class OAuth
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 
-    public static function getBearerToken()
+    public static function getBearerToken(): string | false
     {
         $headers = apache_request_headers();
         if (isset($headers['Authorization'])) {
