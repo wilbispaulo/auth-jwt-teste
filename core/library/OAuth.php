@@ -6,6 +6,7 @@ use DateTime;
 use Exception;
 use DateTimeZone;
 use app\models\Credential;
+use app\models\Endpoint;
 use Jose\Component\Core\JWK;
 use Jose\Component\Signature\JWS;
 use Jose\Component\Signature\JWSBuilder;
@@ -53,9 +54,35 @@ class OAuth
         $this->secret = $secret;
     }
 
-    public function setClaims(array $claims)
+    public function setClaimsDB(string $clientid, array $claims): array
     {
-        $this->claims = $claims;
+        $endpointsAssoc = [];
+        $endpoints = new Endpoint();
+        $endpointsDB = $endpoints->findBy('clientid', $clientid);
+        if (count($endpointsDB) > 0) {
+            if (!$endpoints->delete('clientid', $clientid)) {
+                return ['status' => 'DELETE CLAIM FAIL'];
+            }
+        }
+        foreach ($claims as $claim) {
+            $endpointsAssoc['clientid'] = $clientid;
+            $endpointsAssoc['endpoint'] = substr($claim, 0, strrpos($claim, '/'));
+            $endpointsAssoc['method'] = substr($claim, strrpos($claim, '/') + 1);
+            if (!$endpoints->create($endpointsAssoc)) {
+                return ['status' => 'CREATE CLAIM FAIL'];
+            }
+        }
+        return ['status' => 'OK'];
+    }
+
+    public function clientIdVerify(string $clientId): bool
+    {
+        $ok = false;
+        $credentials = new Credential();
+        if (count($credentials->findBy('clientid', $clientId)) > 0) {
+            $ok = true;
+        }
+        return $ok;
     }
 
     public function genCredentials(string $userid): Response
@@ -75,7 +102,6 @@ class OAuth
             $arrayAssoc['username'] = $userid;
             $ok = $credentials->create($arrayAssoc);
         };
-
         if (!$ok) {
             $result = [
                 'username' => $userid,
@@ -128,8 +154,6 @@ class OAuth
         } else {
             return false;
         }
-        if (count($data) > 0) {
-        }
     }
 
     public function genToken()
@@ -154,7 +178,16 @@ class OAuth
             'iss' => base64_encode($issCrypt),
         ];
 
-        $claims = array_merge($baseClaims, $this->claims);
+        $endpoints = new Endpoint();
+        $claimsDB = $endpoints->findBy('clientid', $this->userid);
+        if (count($claimsDB) < 1) {
+            return ['token' => 'NO ENDPOINTS'];
+        }
+        foreach ($claimsDB as $key => $record) {
+            $claims[$key] = $record['endpoint'] . '/' . $record['method'];
+        }
+
+        $claims = array_merge($baseClaims, $claims);
         $payload = json_encode($claims);
 
         $jws = $jwsBuilder
@@ -195,6 +228,7 @@ class OAuth
             } else if (in_array('INVALID', $claims)) {
                 return ['token' => 'INVALID'];
             }
+            $this->setClaims($claims);
             return ['token' => 'VALID'];
         } catch (Exception $e) {
             return ['token' => 'INVALID'];
@@ -220,7 +254,7 @@ class OAuth
         return $body;
     }
 
-    private function checkClaims(JWS $jws)
+    private function checkClaims(JWS $jws): array
     {
         $checkClaim = [];
         $claims = json_decode(($jws->getPayload()), true);
@@ -228,16 +262,16 @@ class OAuth
         openssl_public_decrypt(base64_decode($claims['iss']), $issuerPlain, $publicSSL);
         $claims['iss'] = $issuerPlain;
 
-        $iss = $this->checkIssuer($claims);
-        $exp = $this->checkExpiration($claims);
-        $iat = $this->checkIssuedAt($claims);
-        $nbf = $this->checkNotBefore($claims);
-        $checkClaim = array_merge($checkClaim, $iss, $exp, $iat, $nbf);
+        $claims['iss'] = $this->checkIssuer($claims);
+        $claims['exp'] = $this->checkExpiration($claims);
+        $claims['iat'] = $this->checkIssuedAt($claims);
+        $claims['nbf'] = $this->checkNotBefore($claims);
+        // $this->setClaims($claims);
 
-        return $checkClaim;
+        return $claims;
     }
 
-    private function checkExpiration(array $claims)
+    private function checkExpiration(array $claims): string
     {
         $clock = new StandardClock;
         $claimCheckerManager = new ClaimCheckerManager(
@@ -247,13 +281,13 @@ class OAuth
         );
         try {
             $ok = $claimCheckerManager->check($claims);
-            return count($ok) > 0 ? $ok : 'EXPIRED';
+            return count($ok) > 0 ? $ok['exp'] : 'EXPIRED';
         } catch (Exception $e) {
-            return ['exp' => 'EXPIRED'];
+            return 'EXPIRED';
         }
     }
 
-    private function checkIssuedAt(array $claims)
+    private function checkIssuedAt(array $claims): string
     {
         $clock = new StandardClock;
         $claimCheckerManager = new ClaimCheckerManager(
@@ -263,13 +297,13 @@ class OAuth
         );
         try {
             $ok = $claimCheckerManager->check($claims);
-            return count($ok) > 0 ? $ok : 'INVALID';
+            return count($ok) > 0 ? $ok['iat'] : 'INVALID';
         } catch (Exception $e) {
-            return ['iat' => 'INVALID'];
+            return 'INVALID';
         }
     }
 
-    private function checkNotBefore(array $claims)
+    private function checkNotBefore(array $claims): string
     {
         $clock = new StandardClock;
         $claimCheckerManager = new ClaimCheckerManager(
@@ -279,13 +313,13 @@ class OAuth
         );
         try {
             $ok = $claimCheckerManager->check($claims);
-            return count($ok) > 0 ? $ok : 'INVALID';
+            return count($ok) > 0 ? $ok['nbf'] : 'INVALID';
         } catch (Exception $e) {
-            return ['nbf' => 'INVALID'];
+            return 'INVALID';
         }
     }
 
-    private function checkIssuer(array $claims)
+    private function checkIssuer(array $claims): string
     {
         $claimCheckerManager = new ClaimCheckerManager(
             [
@@ -296,9 +330,9 @@ class OAuth
         );
         try {
             $ok = $claimCheckerManager->check($claims);
-            return count($ok) > 0 ? $ok : 'INVALID';
+            return count($ok) > 0 ? $ok['iss'] : 'INVALID';
         } catch (Exception $e) {
-            return ['iss' => 'INVALID'];
+            return 'INVALID';
         }
     }
 
@@ -342,6 +376,11 @@ class OAuth
                 'use' => 'sig'
             ]
         );
+    }
+
+    public function setClaims(array $claims)
+    {
+        $this->claims = $claims;
     }
 
     public function getClaims(): array

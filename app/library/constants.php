@@ -20,17 +20,3 @@ define('ALL_OK', 3);
 define("EMAIL_NOREG", 0);
 define("TKRS_INVALID", 1);
 define("TKRS_EXPTIME", 2);
-
-// COOKIES
-define('OPTIONS',  [
-    'path' => '/',
-    'domain' => 'localhost',
-    'secure' => false,
-    'httponly' => true,
-    'samesite' => 'Strict'
-]);
-
-// PATH
-define('PDF_IMG_FILE_FR', ROOT . "/assets/images/carteira/cart_cat_2024_FR.jpg");
-define('PDF_IMG_FILE_VR', ROOT . "/assets/images/carteira/cart_cat_2024_VR.jpg");
-define('PDF_CRPB_FILE', ROOT . "/assets/images/crpb/crpb_2024.jpg");
