@@ -3,20 +3,28 @@
 namespace core\library;
 
 use PDO;
-use Exception;
 use PDOException;
 use PDOStatement;
 use core\library\Filters;
 use core\library\Connection;
-use core\library\Pagination;
 
 abstract class Model
 {
     private mixed $fields = '*';
     private ?Filters $filters = null;
-    private string $pagination = '';
-    private array $dbArgs = [];
     protected string $table;
+    private array $dbArgs = [];
+
+    public function __construct()
+    {
+        $this->setDBAttributes([
+            'host' => $_ENV['DB_HOST'],
+            'port' => $_ENV['DB_PORT'],
+            'dbname' => $_ENV['DB_NAME'],
+            'username' => $_ENV['DB_USERNAME'],
+            'password' => $_ENV['DB_PASSWORD'],
+        ]);
+    }
 
     public function getTable()
     {
@@ -36,12 +44,6 @@ abstract class Model
     public function setDBAttributes(array $dbArgs)
     {
         $this->dbArgs = $dbArgs;
-    }
-
-    public function setPagination(Pagination $pagination)
-    {
-        $pagination->setTotalItens($this->count());
-        $this->pagination = $pagination->dump();
     }
 
     public function create(array $valuesAssoc): bool
@@ -66,7 +68,7 @@ abstract class Model
             } else {
                 $fields = $this->fields;
             }
-            $sql = "select {$fields} from {$this->table}{$this->filters?->dump()}{$this->pagination}";
+            $sql = "select {$fields} from {$this->table}{$this->filters?->dump()}";
 
             if (!$prepare = self::connect($sql, $this->dbArgs)) {
                 return false;
@@ -86,7 +88,7 @@ abstract class Model
             } else {
                 $fields = $this->fields;
             }
-            $sql = "select {$fields} from {$this->table}{$this->filters?->dump()}{$this->pagination}";
+            $sql = "select {$fields} from {$this->table}{$this->filters?->dump()}";
 
             if (!$prepare = self::connect($sql, $this->dbArgs)) {
                 return false;
